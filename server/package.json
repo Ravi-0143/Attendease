@@ -13,6 +13,10 @@
     "dotenv": "^16.4.7",
     "multer": "^2.0.0",
     "googleapis": "^146.0.0",
-    "@google/generative-ai": "^0.24.0"
+    "@google/generative-ai": "^0.24.0",
+    "mongoose": "^8.13.2",
+    "cloudinary": "^1.41.3",
+    "multer-storage-cloudinary": "^4.0.0",
+    "jsonwebtoken": "^9.0.2"
   }
 }
