@@ -1,3 +1,4 @@
+console.log('🚀 Server process started, loading imports...')
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import path from 'path'
@@ -78,6 +79,16 @@ if (process.env.NODE_ENV === 'production') {
   })
 }
 
-app.listen(PORT, () => {
-  console.log(`\n  🚀 AttendEase server running at http://localhost:${PORT}\n`)
+// ─── Global Error Handlers (for debugging silent crashes) ───────────────────
+process.on('uncaughtException', (err) => {
+  console.error('💥 UNCAUGHT EXCEPTION:', err)
+  process.exit(1)
+})
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION at:', promise, 'reason:', reason)
+})
+
+console.log('⏳ Server is starting to bind to port:', PORT)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n  🚀 AttendEase server running at http://0.0.0.0:${PORT}\n`)
 })
