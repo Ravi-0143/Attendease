@@ -74,7 +74,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(clientDist))
 
   // All non-API routes return the React app
-  app.get('*', (req, res) => {
+  app.get(/(.*)/, (req, res) => {
     res.sendFile(path.resolve(clientDist, 'index.html'))
   })
 }
