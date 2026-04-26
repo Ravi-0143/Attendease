@@ -1,0 +1,67 @@
+services:
+  # ─── AttendEase Web Service (Express + React) ───────────────────────────────
+  - type: web
+    name: attendease
+    runtime: node
+    region: oregon
+
+    # Render runs this from the repo root
+    rootDir: .
+
+    # 1. Install all dependencies, then build the React client
+    buildCommand: npm install && cd client && npm install && npm run build && cd ../server && npm install
+
+    # 2. Start the Express server (which serves the built client in production)
+    startCommand: node server/index.js
+
+    # Health-check path
+    healthCheckPath: /api/students
+
+    # Persistent disk — stores tokens.json, sheet-id.json, and any local uploads
+    disk:
+      name: attendease-data
+      mountPath: /etc/attendease-data
+      sizeGB: 1
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Port — Render sets $PORT automatically, but we keep 3001 as fallback
+      - key: PORT
+        value: 3001
+
+      # Path where persistent data (tokens, sheet-id) lives on the disk
+      - key: DATA_DIR
+        value: /etc/attendease-data
+
+      # ── Secrets (fill these in the Render dashboard or via render.yaml sync) ──
+
+      - key: GEMINI_API_KEY
+        sync: false           # Set manually in Render dashboard
+
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+      # Must match the OAuth redirect URI registered in Google Cloud Console:
+      # https://attendease.onrender.com/auth/google/callback
+      - key: REDIRECT_URI
+        sync: false
+
+      - key: MONGODB_URI
+        sync: false
+
+      - key: CLOUDINARY_NAME
+        sync: false
+
+      - key: CLOUDINARY_API_KEY
+        sync: false
+
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      - key: JWT_SECRET
+        sync: false

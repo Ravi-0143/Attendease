@@ -19,7 +19,26 @@ import { getAuthUrl, handleCallback } from './routes/sheets.js'
 const app = express()
 const PORT = process.env.PORT || 3001
 
-// Connect to MongoDB
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+// In production, Render exposes the public URL as RENDER_EXTERNAL_URL.
+// We also accept any localhost origin for local development.
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.RENDER_EXTERNAL_URL, process.env.CLIENT_URL].filter(Boolean)
+  : ['http://localhost:5173', 'http://localhost:3001']
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, mobile apps) or matching origins
+    if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
+      callback(null, true)
+    } else {
+      callback(new Error(`CORS: origin ${origin} not allowed`))
+    }
+  },
+  credentials: true
+}))
+
+// ─── MongoDB ──────────────────────────────────────────────────────────────────
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('✅ MongoDB connected'))
@@ -28,11 +47,10 @@ if (process.env.MONGODB_URI) {
   console.warn('⚠️ No MONGODB_URI found in .env, database operations will fail.')
 }
 
-// Middleware
-app.use(cors())
+// ─── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json())
 
-// Routes
+// ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/students', studentsRouter)
 app.use('/api/sheets', sheetsRouter)
 app.use('/api/gemini', geminiRouter)
@@ -49,14 +67,14 @@ app.get('/auth/google', (req, res) => {
 })
 app.get('/auth/google/callback', handleCallback)
 
-// SERVE FRONTEND (Production Mode)
+// ─── Serve Frontend in Production ─────────────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {
-  // Set static folder
-  app.use(express.static(path.join(__dirname, '..', 'client', 'dist')))
+  const clientDist = path.join(__dirname, '..', 'client', 'dist')
+  app.use(express.static(clientDist))
 
-  // Any route that isn't an API route sends the index.html
+  // All non-API routes return the React app
   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'client', 'dist', 'index.html'))
+    res.sendFile(path.resolve(clientDist, 'index.html'))
   })
 }
 

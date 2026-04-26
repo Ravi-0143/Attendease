@@ -59,8 +59,11 @@ export async function handleCallback(req, res) {
     // Save tokens
     fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2))
 
-    // Redirect back to frontend setup page
-    res.redirect('http://localhost:5173/setup?googleConnected=true')
+    // Redirect back to the frontend setup page — works in both dev and production
+    const frontendBase = process.env.NODE_ENV === 'production'
+      ? (process.env.RENDER_EXTERNAL_URL || '')
+      : 'http://localhost:5173'
+    res.redirect(`${frontendBase}/setup?googleConnected=true`)
   } catch (err) {
     console.error('OAuth callback error:', err)
     res.status(500).send('OAuth authentication failed: ' + err.message)
