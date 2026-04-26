@@ -51,6 +51,36 @@ if (process.env.MONGODB_URI) {
 // ─── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json())
 
+// ─── Health Check Endpoint ────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  const services = {
+    mongodb: {
+      configured: !!process.env.MONGODB_URI,
+      connected: mongoose.connection.readyState === 1,
+      label: 'Database (MongoDB)',
+      envVar: 'MONGODB_URI'
+    },
+    cloudinary: {
+      configured: !!(process.env.CLOUDINARY_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
+      label: 'Photo Storage (Cloudinary)',
+      envVar: 'CLOUDINARY_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET'
+    },
+    gemini: {
+      configured: !!process.env.GEMINI_API_KEY,
+      label: 'AI Recognition (Gemini)',
+      envVar: 'GEMINI_API_KEY'
+    },
+    google: {
+      configured: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      label: 'Google Sheets (OAuth)',
+      envVar: 'GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET'
+    }
+  }
+
+  const allOk = Object.values(services).every(s => s.configured)
+  res.json({ ok: allOk, services })
+})
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/students', studentsRouter)
 app.use('/api/sheets', sheetsRouter)

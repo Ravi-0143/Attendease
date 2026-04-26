@@ -7,6 +7,7 @@ import SetupPage from './pages/SetupPage.jsx'
 import ReviewPage from './pages/ReviewPage.jsx'
 import LateArrivalPage from './pages/LateArrivalPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import ServiceStatus from './components/ServiceStatus.jsx'
 import './App.css'
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <ServiceStatus />
       <Navbar />
       <main className="container">
         <Routes>
