@@ -19,8 +19,16 @@ export default function EnrollmentPage() {
     try {
       const res = await fetch('/api/students')
       const data = await res.json()
-      setStudents(data)
-    } catch { /* ignore */ }
+      if (Array.isArray(data)) {
+        setStudents(data)
+      } else {
+        console.error('Failed to load students:', data)
+        setStudents([])
+      }
+    } catch (err) { 
+      console.error(err)
+      setStudents([])
+    }
   }
 
   function handlePhotoChange(e) {
