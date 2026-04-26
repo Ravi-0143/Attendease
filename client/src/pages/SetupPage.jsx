@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { CheckCircle, Key, Link2, ArrowRight, ExternalLink, Edit2, X } from 'lucide-react'
 
 export default function SetupPage({ onComplete }) {
-  const [status, setStatus] = useState({ geminiConfigured: false, googleConnected: false })
+  const [status, setStatus] = useState({ geminiConfigured: false, googleConfigured: false, googleConnected: false })
   const [geminiKey, setGeminiKey] = useState('')
   const [googleClientId, setGoogleClientId] = useState('')
   const [googleClientSecret, setGoogleClientSecret] = useState('')
@@ -76,7 +76,7 @@ export default function SetupPage({ onComplete }) {
     window.location.href = '/auth/google'
   }
 
-  const allDone = status.geminiConfigured && status.googleConnected
+  const allDone = status.geminiConfigured && (status.googleConfigured || status.googleConnected)
 
   useEffect(() => {
     if (allDone && onComplete) onComplete()
@@ -166,8 +166,8 @@ export default function SetupPage({ onComplete }) {
 
         {/* ── Step 2: Google Sheets Connection ──────────────────── */}
         <div className="setup-step">
-          <div className={`setup-step-number ${status.googleConnected ? 'done' : status.geminiConfigured ? 'active' : ''}`}>
-            {status.googleConnected ? <CheckCircle size={20} /> : '2'}
+          <div className={`setup-step-number ${status.googleConnected ? 'done' : (status.googleConfigured ? 'done' : status.geminiConfigured ? 'active' : '')}`}>
+            {(status.googleConnected || status.googleConfigured) ? <CheckCircle size={20} /> : '2'}
           </div>
           <div className="setup-step-content">
             <h3 className="setup-step-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -243,9 +243,12 @@ export default function SetupPage({ onComplete }) {
               </>
             )}
 
-            {status.googleConnected && !editingGoogle ? (
+            {(status.googleConnected || status.googleConfigured) && !editingGoogle ? (
               <div className="alert alert-success" style={{ margin: 0 }}>
-                <CheckCircle size={18} /> Connected to Google Sheets — attendance saves automatically.
+                <CheckCircle size={18} />
+                {status.googleConnected
+                  ? 'Connected to Google Sheets — attendance saves automatically.'
+                  : 'Google credentials configured via environment. Click "Connect Google Account" below if Sheets writing fails.'}
               </div>
             ) : (
               <div style={{ background: 'white', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-gray-200)' }}>

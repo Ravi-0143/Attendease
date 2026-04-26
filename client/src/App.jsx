@@ -22,7 +22,9 @@ export default function App() {
     try {
       const res = await fetch('/api/setup/status')
       const data = await res.json()
-      setSetupComplete(data.geminiConfigured && data.googleConnected)
+      // If env vars are set (googleConfigured), don't force redirect to Setup.
+      // googleConnected (OAuth token) is only needed when actually writing to Sheets.
+      setSetupComplete(data.geminiConfigured && (data.googleConfigured || data.googleConnected))
     } catch {
       setSetupComplete(false)
     }

@@ -13,7 +13,10 @@ router.get('/status', (req, res) => {
   // Check if Gemini key exists
   const geminiConfigured = !!process.env.GEMINI_API_KEY
 
-  // Check if Google tokens exist
+  // Check if Google OAuth env vars are set
+  const googleConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+
+  // Check if Google tokens (OAuth flow completed) exist
   let googleConnected = false
   try {
     if (fs.existsSync(TOKENS_PATH)) {
@@ -22,7 +25,7 @@ router.get('/status', (req, res) => {
     }
   } catch { /* ignore */ }
 
-  res.json({ geminiConfigured, googleConnected })
+  res.json({ geminiConfigured, googleConfigured, googleConnected })
 })
 
 router.post('/gemini-key', (req, res) => {
