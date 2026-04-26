@@ -11,6 +11,8 @@ export default function HomePage({ setReviewData }) {
   const fileRef = useRef()
   const isProcessingRef = useRef(false)
   const eventSourceRef = useRef(null)
+  const today = new Date().toISOString().split('T')[0]
+  const [attendanceDate, setAttendanceDate] = useState(today)
   const navigate = useNavigate()
 
   // Clean up SSE on unmount
@@ -78,7 +80,7 @@ export default function HomePage({ setReviewData }) {
       const data = await res.json()
       setReviewData({
         results: data.results,
-        date: new Date().toISOString().split('T')[0],
+        date: attendanceDate,
         classPhotoUrl: classPhotoPreview
       })
       navigate('/review')
@@ -119,9 +121,20 @@ export default function HomePage({ setReviewData }) {
       )}
 
       <h1 className="page-title">📋 Attendance</h1>
-      <p className="page-subtitle">
-        {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: 'var(--space-6)' }}>
+        <input 
+          type="date" 
+          className="form-input" 
+          value={attendanceDate}
+          onChange={(e) => setAttendanceDate(e.target.value)}
+          max={today}
+          style={{ width: 'auto', padding: '0.4rem 0.75rem' }}
+          title="Select attendance date"
+        />
+        <span style={{ color: 'var(--color-gray-500)', fontSize: '0.9rem' }}>
+          {new Date(attendanceDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </span>
+      </div>
 
       {alert && (
         <div className={`alert alert-${alert.type}`} onClick={() => setAlert(null)}>
