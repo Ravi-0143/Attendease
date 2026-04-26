@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { UserPlus, Trash2, Upload, Users } from 'lucide-react'
+import { UserPlus, Trash2, Upload, Users, Camera, X } from 'lucide-react'
 
 export default function EnrollmentPage() {
   const [students, setStudents] = useState([])
@@ -9,7 +9,12 @@ export default function EnrollmentPage() {
   const [photoPreview, setPhotoPreview] = useState(null)
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState(null)
+  const [editingPhotoFor, setEditingPhotoFor] = useState(null) // rollNumber of student being edited
+  const [editPhoto, setEditPhoto] = useState(null)
+  const [editPhotoPreview, setEditPhotoPreview] = useState(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const fileRef = useRef()
+  const editFileRef = useRef()
 
   useEffect(() => {
     fetchStudents()
@@ -25,10 +30,20 @@ export default function EnrollmentPage() {
         console.error('Failed to load students:', data)
         setStudents([])
       }
-    } catch (err) { 
+    } catch (err) {
       console.error(err)
       setStudents([])
     }
+  }
+
+  // Auto-suggest next roll number when name is focused/changed
+  async function autoFillRoll() {
+    if (roll) return // don't overwrite if user already typed something
+    try {
+      const res = await fetch('/api/students/next-roll')
+      const data = await res.json()
+      if (data.nextRoll) setRoll(data.nextRoll)
+    } catch { /* ignore */ }
   }
 
   function handlePhotoChange(e) {
@@ -85,6 +100,55 @@ export default function EnrollmentPage() {
     }
   }
 
+  function openPhotoEdit(rollNumber) {
+    setEditingPhotoFor(rollNumber)
+    setEditPhoto(null)
+    setEditPhotoPreview(null)
+    // Trigger file picker
+    setTimeout(() => editFileRef.current?.click(), 50)
+  }
+
+  function handleEditPhotoChange(e) {
+    const file = e.target.files[0]
+    if (file) {
+      setEditPhoto(file)
+      setEditPhotoPreview(URL.createObjectURL(file))
+    }
+  }
+
+  async function submitPhotoEdit() {
+    if (!editPhoto || !editingPhotoFor) return
+    setUploadingPhoto(true)
+    const formData = new FormData()
+    formData.append('photo', editPhoto)
+    try {
+      const res = await fetch(`/api/students/${editingPhotoFor}/photo`, {
+        method: 'PATCH',
+        body: formData
+      })
+      if (res.ok) {
+        setAlert({ type: 'success', msg: 'Photo updated!' })
+        cancelPhotoEdit()
+        fetchStudents()
+      } else {
+        const err = await res.json()
+        setAlert({ type: 'error', msg: err.error || 'Failed to update photo.' })
+      }
+    } catch {
+      setAlert({ type: 'error', msg: 'Server error.' })
+    }
+    setUploadingPhoto(false)
+  }
+
+  function cancelPhotoEdit() {
+    setEditingPhotoFor(null)
+    setEditPhoto(null)
+    setEditPhotoPreview(null)
+    if (editFileRef.current) editFileRef.current.value = ''
+  }
+
+  const editingStudent = students.find(s => s.rollNumber === editingPhotoFor)
+
   return (
     <div className="page" id="enrollment-page">
       <h1 className="page-title">👨‍🎓 Student Enrollment</h1>
@@ -93,6 +157,59 @@ export default function EnrollmentPage() {
       {alert && (
         <div className={`alert alert-${alert.type}`} onClick={() => setAlert(null)}>
           {alert.msg}
+        </div>
+      )}
+
+      {/* Hidden file input for editing existing student photos */}
+      <input
+        type="file"
+        accept="image/*"
+        ref={editFileRef}
+        onChange={handleEditPhotoChange}
+        style={{ display: 'none' }}
+        id="edit-student-photo"
+      />
+
+      {/* Photo Edit Confirmation Modal */}
+      {editingPhotoFor && editPhotoPreview && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="card" style={{ width: 340, padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>Update Photo</h3>
+              <button className="btn btn-ghost" onClick={cancelPhotoEdit}><X size={16} /></button>
+            </div>
+            {editingStudent && (
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-gray-500)', marginBottom: '1rem' }}>
+                for <strong>{editingStudent.name}</strong> (Roll #{editingPhotoFor})
+              </p>
+            )}
+            <img
+              src={editPhotoPreview}
+              alt="New photo preview"
+              style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                className="btn btn-ghost"
+                style={{ flex: 1 }}
+                onClick={() => editFileRef.current?.click()}
+              >
+                <Camera size={15} /> Choose Different
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                onClick={submitPhotoEdit}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? 'Uploading…' : 'Save Photo'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -112,16 +229,22 @@ export default function EnrollmentPage() {
                 placeholder="e.g., Priya Sharma"
                 value={name}
                 onChange={e => setName(e.target.value)}
+                onFocus={autoFillRoll}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="student-roll">Roll Number</label>
+              <label className="form-label" htmlFor="student-roll" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                Roll Number
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-primary-600)', fontWeight: 400 }}>
+                  auto-filled
+                </span>
+              </label>
               <input
                 type="text"
                 className="form-input"
                 id="student-roll"
-                placeholder="e.g., 101"
+                placeholder="Auto-suggested or type manually"
                 value={roll}
                 onChange={e => setRoll(e.target.value)}
               />
@@ -190,12 +313,32 @@ export default function EnrollmentPage() {
                   {students.map(s => (
                     <tr key={s.rollNumber}>
                       <td>
-                        <img
-                          src={s.photoUrl || `/api/students/photo/${s.rollNumber}`}
-                          alt={s.name}
-                          className="photo-preview"
-                          style={{ width: 48, height: 48 }}
-                        />
+                        {/* Photo with hover-to-edit overlay */}
+                        <div
+                          style={{ position: 'relative', width: 48, height: 48, cursor: 'pointer' }}
+                          onClick={() => openPhotoEdit(s.rollNumber)}
+                          title="Click to change photo"
+                          id={`photo-edit-${s.rollNumber}`}
+                        >
+                          <img
+                            src={s.photoUrl || `/api/students/photo/${s.rollNumber}`}
+                            alt={s.name}
+                            className="photo-preview"
+                            style={{ width: 48, height: 48, display: 'block' }}
+                          />
+                          <div style={{
+                            position: 'absolute', inset: 0,
+                            background: 'rgba(0,0,0,0.45)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            borderRadius: 4, opacity: 0,
+                            transition: 'opacity 0.15s'
+                          }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                            onMouseLeave={e => e.currentTarget.style.opacity = 0}
+                          >
+                            <Camera size={18} color="white" />
+                          </div>
+                        </div>
                       </td>
                       <td style={{ fontWeight: 600 }}>{s.name}</td>
                       <td>{s.rollNumber}</td>

@@ -77,6 +77,44 @@ router.post('/', upload.single('photo'), async (req, res) => {
   }
 })
 
+// GET — next available roll number
+router.get('/next-roll', async (req, res) => {
+  try {
+    const students = await Student.find({}, 'rollNumber').lean()
+    // Find numeric roll numbers and return max + 1
+    const nums = students
+      .map(s => parseInt(s.rollNumber, 10))
+      .filter(n => !isNaN(n))
+    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1
+    res.json({ nextRoll: String(next) })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PATCH — update student photo
+router.patch('/:rollNumber/photo', upload.single('photo'), async (req, res) => {
+  try {
+    const { rollNumber } = req.params
+    const student = await Student.findOne({ rollNumber })
+    if (!student) return res.status(404).json({ error: 'Student not found.' })
+    if (!req.file) return res.status(400).json({ error: 'No photo uploaded.' })
+
+    // Delete old photo from Cloudinary
+    if (student.cloudinaryId) {
+      await cloudinary.uploader.destroy(student.cloudinaryId)
+    }
+
+    student.photoUrl = req.file.path
+    student.cloudinaryId = req.file.filename
+    await student.save()
+
+    res.json({ success: true, photoUrl: student.photoUrl })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // DELETE — remove a student
 router.delete('/:rollNumber', async (req, res) => {
   try {
