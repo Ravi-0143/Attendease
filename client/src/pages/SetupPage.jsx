@@ -172,7 +172,7 @@ export default function SetupPage({ onComplete }) {
           <div className="setup-step-content">
             <h3 className="setup-step-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Connect Google Sheets</span>
-              {status.googleConnected && !editingGoogle && (
+              {(status.googleConnected || status.googleConfigured) && !editingGoogle && (
                 <button
                   className="btn btn-ghost"
                   style={{ fontSize: 'var(--font-size-xs)', padding: '4px 10px', gap: 4 }}
@@ -193,8 +193,8 @@ export default function SetupPage({ onComplete }) {
               )}
             </h3>
 
-            {/* How-to instructions — shown when not yet connected, or while editing */}
-            {(!status.googleConnected || editingGoogle) && (
+            {/* How-to instructions — shown when not yet connected/configured, or while editing */}
+            {(!status.googleConnected && !status.googleConfigured || editingGoogle) && (
               <>
                 <p className="setup-step-desc">
                   This allows the app to automatically create and update an attendance spreadsheet on your Google Drive.
@@ -244,11 +244,19 @@ export default function SetupPage({ onComplete }) {
             )}
 
             {(status.googleConnected || status.googleConfigured) && !editingGoogle ? (
-              <div className="alert alert-success" style={{ margin: 0 }}>
-                <CheckCircle size={18} />
-                {status.googleConnected
-                  ? 'Connected to Google Sheets — attendance saves automatically.'
-                  : 'Google credentials configured via environment. Click "Connect Google Account" below if Sheets writing fails.'}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="alert alert-success" style={{ margin: 0 }}>
+                  <CheckCircle size={18} />
+                  {status.googleConnected
+                    ? 'Connected to Google Sheets — attendance saves automatically.'
+                    : 'Google credentials configured via environment.'}
+                </div>
+                {!status.googleConnected && (
+                  <button onClick={connectGoogle} className="btn btn-primary" style={{ width: '100%' }} id="connect-google-btn">
+                    <Link2 size={16} />
+                    Connect Google Account
+                  </button>
+                )}
               </div>
             ) : (
               <div style={{ background: 'white', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-gray-200)' }}>
