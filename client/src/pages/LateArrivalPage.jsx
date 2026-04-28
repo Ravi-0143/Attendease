@@ -31,6 +31,10 @@ export default function LateArrivalPage() {
       })
       if (!res.ok) {
         const err = await res.json()
+        if (err.errorCode === 'SHEET_INACCESSIBLE') {
+          window.dispatchEvent(new Event('sheetInaccessible'))
+          throw new Error('Google Sheet is inaccessible. Follow the prompt to create a new one.')
+        }
         throw new Error(err.error || 'Failed to update')
       }
       const student = students.find(s => s.rollNumber === selectedRoll)

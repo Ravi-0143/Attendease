@@ -8,6 +8,7 @@ import ReviewPage from './pages/ReviewPage.jsx'
 import LateArrivalPage from './pages/LateArrivalPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ServiceStatus from './components/ServiceStatus.jsx'
+import SheetModal from './components/SheetModal.jsx'
 import './App.css'
 
 export default function App() {
@@ -42,6 +43,7 @@ export default function App() {
   return (
     <div className="app">
       <ServiceStatus />
+      <SheetModal />
       <Navbar />
       <main className="container">
         <Routes>

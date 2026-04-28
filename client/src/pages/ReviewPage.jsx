@@ -28,6 +28,10 @@ export default function ReviewPage({ data, onDone }) {
       })
       if (!res.ok) {
         const err = await res.json()
+        if (err.errorCode === 'SHEET_INACCESSIBLE') {
+          window.dispatchEvent(new Event('sheetInaccessible'))
+          throw new Error('Google Sheet is inaccessible. Follow the prompt to create a new one.')
+        }
         throw new Error(err.error || 'Failed to save')
       }
       setAlert({ type: 'success', msg: 'Attendance saved to Google Sheets!' })

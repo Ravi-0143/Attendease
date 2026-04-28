@@ -27,6 +27,10 @@ export default function DashboardPage() {
         const data = await res.json()
         setAttendance(data.attendance || [])
       } else {
+        const err = await res.json()
+        if (err.errorCode === 'SHEET_INACCESSIBLE') {
+          window.dispatchEvent(new Event('sheetInaccessible'))
+        }
         setAttendance([])
       }
     } catch {
@@ -46,6 +50,11 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json()
         setMonthlyStats(data.stats || [])
+      } else {
+        const err = await res.json()
+        if (err.errorCode === 'SHEET_INACCESSIBLE') {
+          window.dispatchEvent(new Event('sheetInaccessible'))
+        }
       }
     } catch { /* ignore */ }
   }

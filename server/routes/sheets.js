@@ -15,22 +15,38 @@ const REDIRECT_URI = process.env.NODE_ENV === 'production'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
+let oauth2ClientInstance = null;
+
 function getOAuth2Client() {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   if (!clientId || !clientSecret) return null
 
-  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, REDIRECT_URI)
+  if (oauth2ClientInstance) return oauth2ClientInstance;
+
+  oauth2ClientInstance = new google.auth.OAuth2(clientId, clientSecret, REDIRECT_URI)
+
+  // Handle token refresh globally (only attached once)
+  oauth2ClientInstance.on('tokens', (newTokens) => {
+    let existingTokens = {}
+    try {
+      if (fs.existsSync(TOKENS_PATH)) {
+        existingTokens = JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf-8'))
+      }
+    } catch { /* ignore */ }
+    const merged = { ...existingTokens, ...newTokens }
+    fs.writeFileSync(TOKENS_PATH, JSON.stringify(merged, null, 2))
+  })
 
   // Load saved tokens if they exist
   try {
     if (fs.existsSync(TOKENS_PATH)) {
       const tokens = JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf-8'))
-      oauth2.setCredentials(tokens)
+      oauth2ClientInstance.setCredentials(tokens)
     }
   } catch { /* ignore */ }
 
-  return oauth2
+  return oauth2ClientInstance
 }
 
 export function getAuthUrl() {
@@ -78,12 +94,6 @@ async function getSheetsClient() {
   if (!tokens) throw new Error('Google account not connected. Go to Setup.')
   auth.setCredentials(tokens)
 
-  // Handle token refresh
-  auth.on('tokens', (newTokens) => {
-    const merged = { ...tokens, ...newTokens }
-    fs.writeFileSync(TOKENS_PATH, JSON.stringify(merged, null, 2))
-  })
-
   return google.sheets({ version: 'v4', auth })
 }
 
@@ -104,17 +114,32 @@ async function readStudents() {
   }
 }
 
-async function getOrCreateSheet() {
-  // Return saved sheet ID if exists
-  try {
-    if (fs.existsSync(SHEET_ID_PATH)) {
-      const data = JSON.parse(fs.readFileSync(SHEET_ID_PATH, 'utf-8'))
-      if (data.spreadsheetId) return data.spreadsheetId
+async function getOrCreateSheet(forceCreate = false) {
+  const sheets = await getSheetsClient()
+
+  // Return saved sheet ID if exists and not forcing create
+  if (!forceCreate) {
+    try {
+      if (fs.existsSync(SHEET_ID_PATH)) {
+        const data = JSON.parse(fs.readFileSync(SHEET_ID_PATH, 'utf-8'))
+        if (data.spreadsheetId) {
+          // Validate access to the sheet
+          try {
+            await sheets.spreadsheets.get({ spreadsheetId: data.spreadsheetId })
+            return data.spreadsheetId
+          } catch (err) {
+            console.error('Saved Google Sheet is inaccessible:', err.message)
+            throw new Error('SHEET_INACCESSIBLE')
+          }
+        }
+      }
+    } catch (err) {
+      if (err.message === 'SHEET_INACCESSIBLE') throw err;
+      /* ignore read errors */
     }
-  } catch { /* ignore */ }
+  }
 
   // Create new spreadsheet
-  const sheets = await getSheetsClient()
   const response = await sheets.spreadsheets.create({
     requestBody: {
       properties: { title: 'Class Attendance' },
@@ -148,6 +173,16 @@ const router = Router()
 router.get('/status', (req, res) => {
   const tokens = loadTokens()
   res.json({ connected: !!tokens?.access_token })
+})
+
+router.post('/force-create', async (req, res) => {
+  try {
+    const spreadsheetId = await getOrCreateSheet(true)
+    res.json({ success: true, spreadsheetId })
+  } catch (err) {
+    console.error('Force create sheet error:', err)
+    res.status(500).json({ error: err.message })
+  }
 })
 
 router.post('/save-attendance', async (req, res) => {
@@ -200,6 +235,9 @@ router.post('/save-attendance', async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     console.error('Save attendance error:', err)
+    if (err.message === 'SHEET_INACCESSIBLE') {
+      return res.status(403).json({ error: 'Google Sheet inaccessible', errorCode: 'SHEET_INACCESSIBLE' })
+    }
     res.status(500).json({ error: err.message })
   }
 })
@@ -256,6 +294,9 @@ router.post('/update-cell', async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     console.error('Update cell error:', err)
+    if (err.message === 'SHEET_INACCESSIBLE') {
+      return res.status(403).json({ error: 'Google Sheet inaccessible', errorCode: 'SHEET_INACCESSIBLE' })
+    }
     res.status(500).json({ error: err.message })
   }
 })
@@ -295,6 +336,9 @@ router.get('/attendance', async (req, res) => {
     res.json({ attendance })
   } catch (err) {
     console.error('Get attendance error:', err)
+    if (err.message === 'SHEET_INACCESSIBLE') {
+      return res.status(403).json({ error: 'Google Sheet inaccessible', errorCode: 'SHEET_INACCESSIBLE' })
+    }
     res.status(500).json({ error: err.message })
   }
 })
@@ -342,6 +386,9 @@ router.get('/attendance-range', async (req, res) => {
     res.json({ stats })
   } catch (err) {
     console.error('Attendance range error:', err)
+    if (err.message === 'SHEET_INACCESSIBLE') {
+      return res.status(403).json({ error: 'Google Sheet inaccessible', errorCode: 'SHEET_INACCESSIBLE' })
+    }
     res.status(500).json({ error: err.message })
   }
 })
